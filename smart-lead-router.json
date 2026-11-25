@@ -1,0 +1,159 @@
+{
+  "name": "Smart Lead Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-router",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        64
+      ],
+      "id": "3a1cc7f8-82df-477d-9fde-2cb17373f15c",
+      "name": "New Lead",
+      "webhookId": "4300cc4b-ef88-4fa6-9ffc-99ab5637e570"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body || $json;\n\nconst name = input.name || '';\nconst email = input.email || '';\nconst message = input.message || '';\nconst budget = input.budget;\n\nlet score = 0;\nif (budget) score += 30;\n\nconst msg = String(message).toLowerCase();\nif (msg.includes('urgent') || msg.includes('asap') || msg.includes('today') || msg.includes('need now')) {\n  score += 40;\n}\n\nif (String(message).length > 20) score += 15;\nif (email) score += 15;\n\nif (score > 100) score = 100;\n\nconst priority = score >= 70 ? 'HOT' : 'STANDARD';\n\nconst reply = priority === 'HOT'\n  ? `Hi ${name || 'there'}, thanks for reaching out! This sounds urgent - we will call you back within 15 minutes.`\n  : `Hi ${name || 'there'}, thanks for your message! We will get back to you with a reply today.`;\n\nreturn [{ json: { ...input, score, priority, reply } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        64
+      ],
+      "id": "be9f49d1-87c5-4ebc-8c09-9c9e3fb5815e",
+      "name": "Score the Lead"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "536494d7-924f-4c25-bcf9-0b5804c50f61",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 70,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        448,
+        64
+      ],
+      "id": "8ed43aab-8df7-4f93-9714-0eb0571b923e",
+      "name": "Hot lead?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ reply: $json.reply, priority: $json.priority, score: $json.score }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        -32
+      ],
+      "id": "a284eab4-fc09-4154-b23c-709c2ec44660",
+      "name": "Reply Instantly \u2014 Hot"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ reply: $json.reply, priority: $json.priority, score: $json.score }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        160
+      ],
+      "id": "1bcd5ac2-26de-47e7-a18a-e9c1358ac838",
+      "name": "Reply \u2014 Standard"
+    },
+    {
+      "parameters": {
+        "content": "Smart Lead Router \u2014 Slow replies lose customers. This workflow answers every lead instantly: hot leads get a 15-minute call-back promise, the rest get a same-day reply. No missed leads."
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        160,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "74eb9792-7b6b-43cf-971a-db4ad3a12cf2",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "New Lead": {
+      "main": [
+        [
+          {
+            "node": "Score the Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score the Lead": {
+      "main": [
+        [
+          {
+            "node": "Hot lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot lead?": {
+      "main": [
+        [
+          {
+            "node": "Reply Instantly \u2014 Hot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply \u2014 Standard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "active": false,
+  "pinData": {}
+}
